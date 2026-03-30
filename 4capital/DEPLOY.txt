@@ -1,0 +1,122 @@
+# 4Capital — Deployment Guide
+# Complete setup takes about 15 minutes
+
+═══════════════════════════════════════════════
+STEP 1 — Create your Supabase database (free)
+═══════════════════════════════════════════════
+
+1. Go to https://supabase.com and sign up (free)
+2. Click "New Project"
+   - Name: 4capital
+   - Database Password: choose a strong password (save it)
+   - Region: West EU (Ireland) — closest to Belgium
+3. Wait ~2 minutes for it to set up
+
+4. Once ready, click "SQL Editor" in the left sidebar
+5. Paste the ENTIRE contents of supabase_schema.sql and click "Run"
+   → This creates all tables and seeds your initial data
+
+6. Go to Project Settings → API
+   Copy these two values — you'll need them in the next step:
+   - Project URL  (looks like: https://abcxyz.supabase.co)
+   - anon / public key  (long string starting with eyJ...)
+
+
+═══════════════════════════════════════════════
+STEP 2 — Add your Supabase keys to index.html
+═══════════════════════════════════════════════
+
+Open public/index.html and find these two lines near the bottom:
+
+  const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+
+Replace with your actual values:
+
+  const SUPABASE_URL = 'https://abcxyz.supabase.co';        ← your Project URL
+  const SUPABASE_ANON_KEY = 'eyJhbGci...your actual key';   ← your anon key
+
+Save the file.
+
+
+═══════════════════════════════════════════════
+STEP 3 — Deploy to Vercel (free)
+═══════════════════════════════════════════════
+
+Option A — Drag & Drop (easiest, no GitHub needed):
+1. Go to https://vercel.com and sign up
+2. From the dashboard, click "Add New" → "Project"
+3. Scroll down and click "Deploy an existing project by uploading"
+   OR go to https://vercel.com/new/upload
+4. Drag the entire "4capital" FOLDER onto the upload area
+5. Vercel auto-detects vercel.json and deploys
+6. You get a live URL like: https://4capital-abc123.vercel.app
+
+Option B — GitHub (recommended for future updates):
+1. Create a free account at https://github.com
+2. Create a new repository called "4capital"
+3. Upload all files in this folder to the repository
+4. Go to https://vercel.com → "Add New" → "Project"
+5. Import your GitHub repo
+6. Click Deploy
+
+To update the site later (GitHub method):
+- Edit index.html on your computer
+- Upload/commit the new file to GitHub
+- Vercel automatically redeploys in ~30 seconds ✓
+
+
+═══════════════════════════════════════════════
+STEP 4 — Custom domain (optional, ~€10/year)
+═══════════════════════════════════════════════
+
+To use 4capital.be or similar:
+1. Buy domain at https://www.ovhcloud.com or https://www.gandi.net
+2. In Vercel → your project → Settings → Domains
+3. Add your domain and follow the DNS instructions
+
+
+═══════════════════════════════════════════════
+HOW DATA PERSISTENCE WORKS
+═══════════════════════════════════════════════
+
+Every action now saves to Supabase:
+
+  ✓ Add a trade        → saved to trades table
+  ✓ Delete a trade     → deleted from trades table
+  ✓ Book a meeting     → saved to events table
+  ✓ Delete a meeting   → deleted from events table
+  ✓ Announcements      → loaded from announcements table
+
+When any member logs in from any device, they see:
+  - The same portfolio (all trades ever entered)
+  - The same calendar (all meetings booked by anyone)
+  - The same announcements
+
+To add a new announcement, go to Supabase → Table Editor → announcements → Insert Row
+
+
+═══════════════════════════════════════════════
+LOGIN CREDENTIALS
+═══════════════════════════════════════════════
+
+  nathan@4capital.com  /  nathan2025
+  kevin@4capital.com   /  kevin2025
+  jeff@4capital.com    /  jeff2025
+  robin@4capital.com   /  robin2025
+
+To change a password: edit the CREDS object in index.html
+
+
+═══════════════════════════════════════════════
+FILE STRUCTURE
+═══════════════════════════════════════════════
+
+  4capital/
+  ├── vercel.json          ← Vercel routing config
+  ├── supabase_schema.sql  ← Run this in Supabase SQL editor
+  ├── DEPLOY.txt           ← This file
+  ├── api/
+  │   └── auth.js          ← (optional) serverless auth endpoint
+  └── public/
+      └── index.html       ← The entire website (all-in-one)
