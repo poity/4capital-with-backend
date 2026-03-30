@@ -717,38 +717,63 @@ function showSaving(msg,type='saving'){
   if(type!=='saving')setTimeout(()=>b.classList.remove('show'),2500);
 }
 
-// ── MARKET DATA ──
-const WL=[
+// Market data
+// ── LIVE MARKET DATA (FINNHUB) ──
+const FINNHUB_KEY = 'YOUR_FINNHUB_KEY'; // <--- Put your key here
+const WL = [
   {s:'AAPL',n:'Apple'},{s:'NVDA',n:'NVIDIA'},{s:'MSFT',n:'Microsoft'},
   {s:'GOOGL',n:'Alphabet'},{s:'TSLA',n:'Tesla'},{s:'AMZN',n:'Amazon'},
   {s:'META',n:'Meta'},{s:'ASML',n:'ASML'},{s:'KBC.BR',n:'KBC Group'},
   {s:'UCB.BR',n:'UCB SA'},{s:'ABI.BR',n:'AB InBev'},{s:'SOLB.BR',n:'Solvay'},
 ];
-const QC={};
-async function fQ(sym){
-  const k=sym.toUpperCase();
-  if(QC[k]&&Date.now()-QC[k].ts<90000)return QC[k];
-  for(const base of['https://query1.finance.yahoo.com','https://query2.finance.yahoo.com']){
-    try{
-      const r=await fetch(`${base}/v8/finance/chart/${k}?interval=1d&range=1d`,{mode:'cors'});
-      if(!r.ok)continue;
-      const d=await r.json();
-      const res=d?.chart?.result?.[0];if(!res)continue;
-      const m=res.meta;const p=m.regularMarketPrice||m.previousClose;
-      const prev=m.chartPreviousClose||m.previousClose||p;
-      const c=p-prev,pct=prev?(c/prev)*100:0;
-      const q={s:k,name:m.longName||m.shortName||k,p,c,pct,hi:m.regularMarketDayHigh||p,lo:m.regularMarketDayLow||p,vol:m.regularMarketVolume||0,currency:m.currency||'USD',exchange:m.exchangeName||'',ts:Date.now()};
-      QC[k]=q;return q;
-    }catch{continue;}
-  }
-  const seed=k.split('').reduce((a,c2)=>a+c2.charCodeAt(0),0);
-  const p2=50+(seed%450),c2=(Math.random()-.42)*p2*.04;
-  const q={s:k,name:k,p:p2,c:c2,pct:(c2/p2)*100,hi:p2*1.015,lo:p2*.985,vol:0,currency:'EUR',exchange:'',ts:Date.now()};
-  QC[k]=q;return q;
-}
-function fmtP(p,cur){if(!p||isNaN(p))return'—';const s=cur==='EUR'?'€':cur==='GBP'?'£':cur==='JPY'?'¥':'$';return s+p.toFixed(2)}
-function fmtV(v){return v>=1e9?(v/1e9).toFixed(1)+'B':v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v||'—'}
 
+const QC = {};
+
+async function fQ(sym) {
+  const k = sym.toUpperCase();
+  
+  // Cache for 1.5 minutes to stay within free API limits
+  if (QC[k] && Date.now() - QC[k].ts < 90000) return QC[k];
+
+  try {
+    const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${k}&token=${FINNHUB_KEY}`);
+    if (!r.ok) throw new Error('API limit');
+    const d = await r.json();
+
+    // Finnhub: c=price, d=change, dp=percent change, h=high, l=low
+    const q = {
+      s: k,
+      name: WL.find(w => w.s === k)?.n || k,
+      p: d.c,
+      c: d.d,
+      pct: d.dp,
+      hi: d.h,
+      lo: d.l,
+      vol: 0, // Finnhub quote doesn't include volume in the basic quote
+      currency: k.endsWith('.BR') ? 'EUR' : 'USD',
+      exchange: '',
+      ts: Date.now()
+    };
+    
+    QC[k] = q;
+    return q;
+  } catch (e) {
+    console.error("Finnhub error:", e);
+    // Return empty object if API fails
+    return { s: k, name: k, p: 0, c: 0, pct: 0, hi: 0, lo: 0, vol: 0, currency: 'USD', ts: Date.now() };
+  }
+}
+
+function fmtP(p, cur) {
+  if (!p || isNaN(p)) return '—';
+  const s = cur === 'EUR' ? '€' : '$';
+  return s + p.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function fmtV(v) {
+  if (!v) return '—';
+  return v >= 1e9 ? (v/1e9).toFixed(1)+'B' : v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v;
+}
 // ── INIT ──
 function initApp(){
   const now=new Date(),h=now.getHours();
